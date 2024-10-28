@@ -1,0 +1,39 @@
+#!/bin/bash
+
+sudo hostnamectl set-hostname SipRouter
+
+sudo cat <<EOT > /etc/netplan/00-installer-config.yaml
+network:
+  ethernets:
+    outside:
+      dhcp4: true
+      match:
+        macaddress: $1
+      set-name: outside
+    sip_serv:
+      addresses:
+        - 10.0.1.254/24
+      match:
+        macaddress: $2
+      set-name: sip_serv
+    phone:
+      addresses:
+        - 10.0.1.1/24
+      match:
+        macaddress: $3
+      set-name: phone
+    attacker:
+      addresses:
+        - 10.0.1.2/24
+      match:
+        macaddress: $4
+      set-name: attacker
+  version: 2
+EOT
+
+sudo netplan apply
+sudo sysctl -w net.ipv4.ip_forward=1
+sudo sysctl -w net.ipv6.conf.all.forwarding=1
+sudo sysctl -p
+
+echo "Konfiguration abgeschlossen."
