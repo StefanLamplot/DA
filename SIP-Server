@@ -1,0 +1,73 @@
+#!/bin/bash
+
+sudo hostnamectl set-hostname SIP-Server
+sudo cat <<EOT > /etc/netplan/00-installer-config.yaml
+network:
+  ethernets:
+    ens33:
+      addresses:
+        - 10.0.1.1/24
+  version: 2
+EOT
+
+sudo netplan apply
+
+sudo cat <<EOT > /etc/asterisk/sip.conf
+[general]
+context=internal
+allowguest=no
+allowoverlap=no
+bindport=5060
+bindaddr=0.0.0.0
+srvlookup=no
+disallow=all
+allow=ulaw
+allow=gsm
+allow=wav
+alwaysauthreject=yes
+canreinvite=no
+nat=yes
+session-timers=refuse
+local=10.0.1.0/255.255.255.0
+
+[7001]
+type=friend
+host=dynamic
+secret=7001
+context=invite
+insecure=invite
+
+[7002]
+type=friend
+host=dynamic
+secret=7002
+context=internal
+insecure=invite
+
+[7003]
+type=friend
+host=dynamic
+secret=7003
+context=internal
+EOT
+
+sudo cat <<EOT > /etc/asterisk/sip.conf
+[internal]
+exten => 7001,1,Answer()
+exten => 7001,2,Dial(SIP/7001,60)
+exten => 7001,3,Playback(vm-nobodyavail)
+exten => 7001,4,Hangup()
+
+exten => 7002,1,Answer()
+exten => 7002,2,Dial(SIP/7002,60)
+exten => 7002,3,Playback(vm-nobodyavail)
+exten => 7002,4,Hangup()
+
+exten => 7003,1,Answer()
+exten => 7003,2,Playback(/var/lib/asterisk/sounds/en/code)
+exten => 7003,3,Hangup()
+EOT
+
+systemctl restart asterisk
+systemctl enable asterisk
+
